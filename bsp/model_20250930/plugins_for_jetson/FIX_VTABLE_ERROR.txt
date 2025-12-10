@@ -1,0 +1,126 @@
+================================================================================
+           🔧 修复 vtable 错误（缺少虚函数实现）
+================================================================================
+
+错误信息:
+undefined symbol: _ZTVN8nvinfer16plugin12ODConvPluginE
+
+原因:
+类中声明了虚函数但没有实现
+
+================================================================================
+                    已修复的文件
+================================================================================
+
+✅ ODConvPlugin.cpp
+-----------------------------------
+添加了 2 个缺失的函数:
+
+1. 析构函数 (第 51-54 行)
+ODConvPlugin::~ODConvPlugin()
+{
+    terminate();
+}
+
+2. supportsFormatCombination (第 118-125 行)
+bool ODConvPlugin::supportsFormatCombination(
+    int pos, const PluginTensorDesc* inOut, int nbInputs, int nbOutputs) noexcept
+{
+    const PluginTensorDesc& desc = inOut[pos];
+    return (desc.type == DataType::kFLOAT || desc.type == DataType::kHALF) &&
+           desc.format == TensorFormat::kLINEAR;
+}
+-----------------------------------
+
+✅ C2fEMAPlugin.cpp
+-----------------------------------
+添加了 2 个缺失的函数:
+
+1. 析构函数 (第 34-37 行)
+C2fEMAPlugin::~C2fEMAPlugin()
+{
+    terminate();
+}
+
+2. supportsFormatCombination (第 47-54 行)
+bool C2fEMAPlugin::supportsFormatCombination(
+    int pos, const PluginTensorDesc* inOut, int nbInputs, int nbOutputs) noexcept
+{
+    const PluginTensorDesc& desc = inOut[pos];
+    return (desc.type == DataType::kFLOAT || desc.type == DataType::kHALF) &&
+           desc.format == TensorFormat::kLINEAR;
+}
+-----------------------------------
+
+✅ BiFPNConcatPlugin.cpp
+已完整实现，无需修改
+
+✅ DySamplePlugin.cpp
+已完整实现，无需修改
+
+================================================================================
+                    需要传到 Jetson 的文件
+================================================================================
+
+只需要传输修改后的 2 个文件:
+- ODConvPlugin.cpp
+- C2fEMAPlugin.cpp
+
+================================================================================
+                    在 Jetson 上重新编译
+================================================================================
+
+1. 传输文件 (在 Windows 上执行)
+-----------------------------------
+cd E:\BaiduNetdiskDownload\Network-YOLOv\ultralytics-8.2.0_test\bsp\model_20250930\plugins_for_jetson
+scp ODConvPlugin.cpp C2fEMAPlugin.cpp aiot@192.168.31.220:~/tensorrt-alpha/mdb_yolo/plugins/
+-----------------------------------
+
+2. 重新编译插件库 (在 Jetson 上执行)
+-----------------------------------
+cd ~/tensorrt-alpha/mdb_yolo/plugins/build
+make clean
+make -j$(nproc)
+-----------------------------------
+
+预期输出:
+[100%] Linking CXX shared library libmdb_yolo_plugins.so
+[100%] Built target mdb_yolo_plugins
+
+3. 测试运行
+-----------------------------------
+cd ~/tensorrt-alpha/yolov8/build
+./app_yolov8 --model=../../data/yolov8/bestfp16.trt --size=640 --img=../../data/taro/8.jpg --show --savePath=../
+-----------------------------------
+
+预期输出:
+[INFO] ✅ MDB-YOLO custom plugins loaded!
+(没有 undefined symbol 错误)
+
+================================================================================
+                    ✅ 验证成功标志
+================================================================================
+
+✅ 没有 "undefined symbol" 错误
+✅ 看到 "MDB-YOLO custom plugins loaded!"
+✅ 程序能正常加载模型
+
+================================================================================
+                    📋 已修复的所有问题总结
+================================================================================
+
+问题 1: static 成员变量未定义
+- 修复: 在 ODConvPlugin.cpp 和 C2fEMAPlugin.cpp 添加了 mFC 和 mPluginAttributes 的定义
+
+问题 2: 虚函数表错误（vtable）
+- 修复: 在 ODConvPlugin.cpp 和 C2fEMAPlugin.cpp 添加了:
+  * 析构函数 ~XXXPlugin()
+  * supportsFormatCombination() 函数
+
+所有插件现在应该可以正常工作了！🎉
+
+================================================================================
+
+
+
+

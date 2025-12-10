@@ -1,0 +1,13 @@
+#path: /mnt/v88/ultralytics-8.2.0_test/photo_gallery  # 根目录
+path: E:/BaiduNetdiskDownload/Network-YOLOv/ultralytics-8.2.0_test/photo_gallery
+
+
+train: images/train  # 相对 path 的训练集图片文件夹
+val: images/val      # 相对 path 的验证集图片文件夹
+test: images/test    # 相对 path 的测试集图片文件夹（可选）
+# Classes
+# ['Chave', 'DISJUNTOR', 'TP', 'Pararraio', 'TC']
+names:
+  0: Taro_residue
+
+

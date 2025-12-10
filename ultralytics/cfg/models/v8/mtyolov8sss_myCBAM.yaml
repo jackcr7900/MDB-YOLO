@@ -1,0 +1,49 @@
+# YOLOv8 object detection model with P3-P5 outputs. For Usage examples see https://docs.ultralytics.com/tasks/detect
+
+# Parameters
+nc: 1  # number of classes
+scales: 
+  n: [0.33, 0.25, 1024]  # YOLOv8n
+  s: [0.33, 0.50, 1024]  # YOLOv8s (我们将基于这个调整)
+  m: [0.67, 0.75, 768]   # YOLOv8m
+  l: [1.00, 1.00, 512]  # YOLOv8l
+  x: [1.00, 1.25, 512]  # YOLOv8x
+
+# YOLOv8s backbone
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [128, 3, 2]]  # 0-P1/2 (64 * 2 = 128)
+  - [-1, 1, Conv, [256, 3, 2]]  # 1-P2/4 (128 * 2 = 256)
+  - [-1, 3, C2f, [256, True]]   # (128 * 2 = 256)
+  - [-1, 1, Conv, [512, 3, 2]]  # 3-P3/8 (256 * 2 = 512)
+  - [-1, 6, C2f, [512, True]]   # (256 * 2 = 512)
+  - [-1, 1, Conv, [1024, 3, 2]] # 5-P4/16 (512 * 2 = 1024)
+  - [-1, 6, C2f, [1024, True]]  # (512 * 2 = 1024)
+  - [-1, 1, Conv, [2048, 3, 2]] # 7-P5/32 (1024 * 2 = 2048)
+  - [-1, 3, C2f, [2048, True]]  # (1024 * 2 = 2048)
+  - [-1, 1, SPPF, [2048, 5]]    # 9 (1024 * 2 = 2048)
+
+# YOLOv8s head
+head:
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
+  - [[-1, 6], 1, Concat, [1]]  # cat backbone P4
+  - [-1, 3, C2f, [1024]]       # 12 (512 * 2 = 1024)
+  - [-1, 1, my_CBAM, [1024]]   # 通道数匹配 C2f 输出
+
+  - [-1, 1, nn.Upsample, [None, 2, 'nearest']]
+  - [[-1, 4], 1, Concat, [1]]  # cat backbone P3
+  - [-1, 3, C2f, [512]]        # 16 (P3/8-small) (256 * 2 = 512)
+  - [-1, 1, my_CBAM, [512]]    # 通道数匹配 C2f 输出
+
+  - [-1, 1, Conv, [512, 3, 2]] # (256 * 2 = 512)
+  - [[-1, 13], 1, Concat, [1]] # cat head P4
+  - [-1, 3, C2f, [1024]]       # 20 (P4/16-medium) (512 * 2 = 1024)
+  - [-1, 1, my_CBAM, [1024]]   # 通道数匹配 C2f 输出
+
+  - [-1, 1, Conv, [1024, 3, 2]] # (512 * 2 = 1024)
+  - [[-1, 9], 1, Concat, [1]]  # cat head P5
+  - [-1, 3, C2f, [2048]]       # 24 (P5/32-large) (1024 * 2 = 2048)
+  - [-1, 1, my_CBAM, [2048]]   # 通道数匹配 C2f 输出
+
+  - [[17, 21, 25], 1, Detect, [nc]]  # Detect(P3, P4, P5)
+  
